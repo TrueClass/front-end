@@ -313,7 +313,7 @@ const styles = {
     margin: 0, 
     padding: 0, 
     fontFamily: "Arial, sans-serif", 
-    backgroundColor: "#341642", 
+    backgroundColor: "#162c42", 
     height: "100vh", display: "flex", 
     flexDirection: "column", 
     justifyContent: "center", 
