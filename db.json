@@ -1,0 +1,26 @@
+{
+  "db_users": [
+    {
+      "email": "gu.fusco@alunos.fho.edu.br",
+      "password": "SuaSenhaForte123!",
+      "id": "WAJN5Wy1sHw"
+    }
+  ],
+  "db_salas": [
+    { 
+      "id": 1, 
+      "nome": "Programação WEB", 
+      "professor": "Mauricio Acconcia Dias", 
+      "cor": "#337ab7" 
+    },
+    { 
+      "id": 2, 
+      "nome": "Microcontroladores", 
+      "professor": "Pedro Luis Antonelli", 
+      "cor": "#5a433f" 
+    }
+  ],
+  "db_facul": [
+    { "id": 1, "nome": "FHO - Fundação Hermínio Ometto" }
+  ]
+}
