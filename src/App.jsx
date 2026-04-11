@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaEye, FaEyeSlash, FaSignOutAlt, FaUniversity } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSignOutAlt, FaUniversity, FaChalkboardTeacher, FaBook } from "react-icons/fa";
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
 import logo_fho from "./assets/logo-fho.png";
 import "./App.css";
@@ -27,20 +27,11 @@ function SelecaoFacul() {
   };
 
   return (
-    // AQUI: Aplicado o fundo escuro exclusivo da Seleção
     <div style={styles.bodySelecao}>
       <div style={styles.container}>
-        <img 
-          src="/true_class.png" 
-          alt="TrueClass Logo" 
-          style={{ width: "200px", marginBottom: "20px" }} 
-        />
-        <h2 style={{ color: "#333", marginBottom: "10px", fontSize: "22px" }}>
-          Bem-vindo ao TrueClass
-        </h2>
-        <p style={{ color: "#666", marginBottom: "20px", fontSize: "14px" }}>
-          Selecione sua instituição para acessar o portal
-        </p>
+        <img src="/true_class.png" alt="TrueClass Logo" style={{ width: "200px", marginBottom: "20px" }} />
+        <h2 style={{ color: "#333", marginBottom: "10px", fontSize: "22px" }}>Bem-vindo ao TrueClass</h2>
+        <p style={{ color: "#666", marginBottom: "20px", fontSize: "14px" }}>Selecione sua instituição para acessar o portal</p>
         
         <div style={{ position: "relative", width: "100%" }}>
           <select 
@@ -55,10 +46,7 @@ function SelecaoFacul() {
           </select>
           <FaUniversity style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
         </div>
-
-        <button onClick={handleAvancar} style={styles.button}>
-          Avançar para o Login
-        </button>
+        <button onClick={handleAvancar} style={styles.button}>Avançar para o Login</button>
       </div>
     </div>
   );
@@ -78,7 +66,6 @@ function Login() {
       setErroLogin("Preencha todos os campos");
       return;
     }
-
     try {
       const response = await fetch(`http://localhost:3001/db_users?email=${email.trim()}`);
       const usuarios = await response.json();
@@ -162,25 +149,20 @@ function Cadastro() {
     try {
       const checkResponse = await fetch(`http://localhost:3001/db_users?email=${email.trim()}`);
       const usuariosExistentes = await checkResponse.json();
-
       if (usuariosExistentes.length > 0) {
         setErroEmail("Este e-mail já está cadastrado!");
         return;
       }
-
       const response = await fetch("http://localhost:3001/db_users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }), // Corrigido aqui
+        body: JSON.stringify({ email, password, tipo: "aluno" }),
       });
-
       if (response.ok) {
         alert("Cadastro realizado com sucesso!");
         setEmail(""); setPassword(""); setConfirmPassword("");
       }
-    } catch (e) {
-      setErroEmail("Erro ao conectar com o servidor.");
-    }
+    } catch (e) { setErroEmail("Erro ao conectar com o servidor."); }
   };
 
   return (
@@ -189,10 +171,7 @@ function Cadastro() {
       <h1 style={styles.mainTitle}>TRUECLASS</h1>
       <div style={styles.container}>
         <h2 style={{ color: "#333", marginBottom: "20px" }}>Criar Conta</h2>
-        <input 
-          type="text" placeholder="E-mail Institucional" style={styles.input}
-          value={email} onChange={(e) => { setEmail(e.target.value); setErroEmail(""); }} 
-        />
+        <input type="text" placeholder="E-mail Institucional" style={styles.input} value={email} onChange={(e) => { setEmail(e.target.value); setErroEmail(""); }} />
         {erroEmail && <p style={styles.erroTexto}>● {erroEmail}</p>}
         <div style={styles.passwordWrapper}>
           <input type={showPass ? "text" : "password"} placeholder="Criar Senha" style={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -208,10 +187,8 @@ function Cadastro() {
           {!temEspecial && <p style={styles.erroTexto}>● Falta um caractere especial</p>}
           {!temDezCaracteres && <p style={styles.erroTexto}>● Falta no mínimo 10 caracteres</p>}
           {senhaForteTotal && confirmPassword !== "" && (
-            <>
-              {!senhasIguais && <p style={styles.erroTexto}>● As senhas não coincidem</p>}
-              {senhasIguais && <p style={styles.sucessoTexto}>● As senhas são idênticas!</p>}
-            </>
+            <>{!senhasIguais && <p style={styles.erroTexto}>● As senhas não coincidem</p>}
+              {senhasIguais && <p style={styles.sucessoTexto}>● As senhas são idênticas!</p>}</>
           )}
         </div>
         <button onClick={handleFinalizarCadastro} style={styles.button}>Finalizar Cadastro</button>
@@ -224,60 +201,119 @@ function Cadastro() {
 // --- TELA DE MURAL ---
 function Mural() {
   const [materias, setMaterias] = useState([]);
+  const [professores, setProfessores] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState("Classes");
   const navigate = useNavigate();
 
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+
   useEffect(() => {
-    const buscarSalasDoBanco = async () => {
+    const buscarDados = async () => {
       try {
-        const response = await fetch("http://localhost:3001/db_salas");
-        const dados = await response.json();
-        setMaterias(dados);
+        const [resSalas, resProfs] = await Promise.all([
+          fetch("http://localhost:3001/db_salas"),
+          fetch("http://localhost:3001/db_professores")
+        ]);
+        
+        const dadosSalas = await resSalas.json();
+        const dadosProfs = await resProfs.json();
+        
+        setMaterias(dadosSalas);
+        setProfessores(dadosProfs);
         setCarregando(false);
-      } catch (error) {
-        console.error("Erro ao buscar salas:", error);
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err);
         setCarregando(false);
       }
     };
-    buscarSalasDoBanco();
+    buscarDados();
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear(); // Limpa tudo ao sair
+    localStorage.clear();
     navigate("/login");
   };
 
   return (
-    <div style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
+      
+      {/* Sidebar (Menu Lateral) */}
+      <div style={{ ...styles.sidebar, left: menuAberto ? "0" : "-250px" }}>
+        <div style={styles.sidebarHeader}>
+          <div style={styles.logoContainer}>
+             <img src="/true_class.png" alt="Logo" style={{ width: "160px", height: "auto" }} />
+          </div>
+          <button onClick={() => setMenuAberto(false)} style={styles.closeBtnAbsolute}>✕</button>
+        </div>
+        <nav style={styles.sidebarNav}>
+          <div onClick={() => { setAbaAtiva("Classes"); setMenuAberto(false); }} 
+               style={{ 
+                 ...styles.navItem, 
+                 backgroundColor: abaAtiva === "Classes" ? "#e8f0fe" : "transparent",
+                 color: abaAtiva === "Classes" ? "#1967d2" : "#5f6368"
+               }}>
+            <FaBook style={{ marginRight: '15px' }} /> Classes
+          </div>
+          {usuario?.tipo === "aluno" && (
+            <div onClick={() => { setAbaAtiva("Professores"); setMenuAberto(false); }} 
+                 style={{ 
+                   ...styles.navItem, 
+                   backgroundColor: abaAtiva === "Professores" ? "#e8f0fe" : "transparent",
+                   color: abaAtiva === "Professores" ? "#1967d2" : "#5f6368"
+                 }}>
+              <FaChalkboardTeacher style={{ marginRight: '15px' }} /> Professores
+            </div>
+          )}
+        </nav>
+      </div>
+
+      {/* Header */}
       <header style={styles.muralHeader}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <span style={{ fontSize: '24px', cursor: 'pointer', color: '#5f6368' }}>☰</span>
+          <span onClick={() => setMenuAberto(true)} style={{ fontSize: '24px', cursor: 'pointer', color: '#5f6368', marginLeft: '10px' }}>☰</span>
         </div>
         <h2 style={styles.muralTitle}>TRUE CLASS</h2>
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flex: 1 }}>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-             <FaSignOutAlt style={{ marginRight: '8px' }} /> Sair
-          </button>
+          <button onClick={handleLogout} style={styles.logoutButton}><FaSignOutAlt style={{ marginRight: '8px' }} /> Sair</button>
         </div>
       </header>
+
+      {/* Conteúdo Dinâmico */}
       <div style={styles.gridContainer}>
         {carregando ? (
-          <p style={{ textAlign: 'center', width: '100%' }}>Carregando salas...</p>
-        ) : materias.length > 0 ? (
+          <p style={{ textAlign: 'center', width: '100%' }}>Carregando...</p>
+        ) : abaAtiva === "Classes" ? (
           materias.map((m) => (
             <div key={m.id} style={styles.muralCard}>
               <div style={{ ...styles.muralCardHeader, backgroundColor: m.cor }}>
-                <h3 style={{ margin: 0, textDecoration: 'underline', color: 'white' }}>{m.nome}</h3>
-                <p style={{ margin: '5px 0 0', fontSize: '13px', color: 'white' }}>{m.professor}</p>
+                <h3 style={{ color: "white", textDecoration: 'underline' }}>{m.nome}</h3>
+                <p style={{ color: "white", fontSize: '13px' }}>{m.professor}</p>
               </div>
               <div style={{ height: '140px' }}></div>
               <div style={styles.muralCardFooter}><span>📁</span></div>
             </div>
           ))
         ) : (
-          <p style={{ textAlign: 'center', width: '100%' }}>Nenhuma sala encontrada no banco.</p>
+          professores.map((p) => (
+            <div key={p.id} style={styles.muralCard}>
+              <div style={{ ...styles.muralCardHeader, backgroundColor: p.cor }}>
+                <h3 style={{ color: "white", textDecoration: 'underline' }}>{p.nome}</h3>
+                <p style={{ color: "white", fontSize: '12px', marginTop: '5px' }}>{p.email}</p>
+              </div>
+              <div style={{ height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                 <FaChalkboardTeacher style={{ fontSize: '50px', color: '#eee' }} />
+              </div>
+              <div style={styles.muralCardFooter}>
+                <span title="Enviar e-mail">✉️</span>
+              </div>
+            </div>
+          ))
         )}
       </div>
+
+      {menuAberto && <div onClick={() => setMenuAberto(false)} style={styles.overlay}></div>}
     </div>
   );
 }
@@ -314,7 +350,8 @@ const styles = {
     padding: 0, 
     fontFamily: "Arial, sans-serif", 
     backgroundColor: "#162c42", 
-    height: "100vh", display: "flex", 
+    height: "100vh", 
+    display: "flex", 
     flexDirection: "column", 
     justifyContent: "center", 
     alignItems: "center", 
@@ -325,7 +362,8 @@ const styles = {
     top: "10px", 
     left: "10px", 
     width: "100px", 
-    height: "auto" },
+    height: "auto" 
+  },
   mainTitle: { 
     color: "white", 
     fontSize: "60px", 
@@ -352,8 +390,8 @@ const styles = {
     borderRadius: "5px", 
     outline: "none", 
     fontSize: "14px", 
-    backgroundColor: "#ffffff", // Garante o fundo branco
-    color: "#333333",
+    backgroundColor: "#ffffff", 
+    color: "#333333" 
   },
   passwordWrapper: { 
     position: "relative", 
@@ -465,5 +503,69 @@ const styles = {
     display: "flex", 
     justifyContent: "flex-end", 
     gap: "15px" 
+  },
+  sidebar: { 
+    position: "fixed", 
+    top: 0, 
+    width: "250px", 
+    height: "100%", 
+    backgroundColor: "white", 
+    boxShadow: "2px 0 15px rgba(0,0,0,0.1)", 
+    transition: "0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+    zIndex: 1000, 
+    display: "flex", 
+    flexDirection: "column" 
+  },
+  sidebarHeader: { 
+    padding: "30px 20px", 
+    display: "flex", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    borderBottom: "1px solid #eee", 
+    position: "relative", 
+    minHeight: "100px", 
+    boxSizing: "border-box" 
+  },
+  logoContainer: { 
+    display: "flex", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    width: "100%" 
+  },
+  closeBtnAbsolute: { 
+    position: "absolute", 
+    right: "15px", 
+    top: "15px", 
+    background: "none", 
+    border: "none", 
+    fontSize: "22px", 
+    cursor: "pointer", 
+    color: "#5f6368", 
+    zIndex: 10 
+  },
+  sidebarNav: { 
+    display: "flex", 
+    flexDirection: "column", 
+    padding: "15px 0" 
+  },
+  navItem: { 
+    padding: "15px 25px", 
+    borderRadius: "0 25px 25px 0", 
+    cursor: "pointer", 
+    fontSize: "16px", 
+    marginBottom: "5px", 
+    fontWeight: "500", 
+    display: 'flex', 
+    alignItems: 'center', 
+    transition: "0.2s" 
+  },
+  overlay: { 
+    position: "fixed", 
+    top: 0, 
+    left: 0, 
+    width: "100%", 
+    height: "100%", 
+    backgroundColor: "rgba(0,0,0,0.4)", 
+    zIndex: 999 
   },
 };
