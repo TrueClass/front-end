@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { FaEye, FaEyeSlash, FaSignOutAlt, FaUniversity, FaChalkboardTeacher, FaBook } from "react-icons/fa";
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
+import { FaEye, FaEyeSlash, FaSignOutAlt, FaUniversity, FaChalkboardTeacher, FaBook, FaArrowLeft, FaArrowUp, FaArrowDown, FaCommentAlt } from "react-icons/fa";
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from "react-router-dom";
 import logo_fho from "./assets/logo-fho.png";
 import "./App.css";
 
@@ -32,11 +32,10 @@ function SelecaoFacul() {
         <img src="/true_class.png" alt="TrueClass Logo" style={{ width: "200px", marginBottom: "20px" }} />
         <h2 style={{ color: "#333", marginBottom: "10px", fontSize: "22px" }}>Bem-vindo ao TrueClass</h2>
         <p style={{ color: "#666", marginBottom: "20px", fontSize: "14px" }}>Selecione sua instituição para acessar o portal</p>
-        
         <div style={{ position: "relative", width: "100%" }}>
-          <select 
-            style={{ ...styles.input, appearance: "none", paddingRight: "30px" }} 
-            value={selecionada} 
+          <select
+            style={{ ...styles.input, appearance: "none", paddingRight: "30px" }}
+            value={selecionada}
             onChange={(e) => setSelecionada(e.target.value)}
           >
             <option value="">Escolha uma faculdade...</option>
@@ -69,37 +68,32 @@ function Login() {
     try {
       const response = await fetch(`http://localhost:3001/db_users?email=${email.trim()}`);
       const usuarios = await response.json();
-
       if (usuarios.length === 0) {
         setErroLogin("Usuário não cadastrado");
         return;
       }
-
       const usuarioEncontrado = usuarios[0];
       if (usuarioEncontrado.password !== password) {
         setErroLogin("Senha incorreta");
         return;
       }
-
       localStorage.setItem("usuarioLogado", JSON.stringify(usuarioEncontrado));
       navigate("/mural");
-    } catch (error) {
-      setErroLogin("Erro ao conectar com o servidor");
-    }
+    } catch (error) { setErroLogin("Erro ao conectar com o servidor"); }
   };
 
   return (
-    <div style={styles.body}>
+    <div style={styles.bodyLogin}>
       <img src={logo_fho} alt="Logo FHO" style={styles.logo_fho} />
       <h1 style={styles.mainTitle}>TRUECLASS</h1>
       <div style={styles.container}>
         <h2 style={{ color: "#333", marginBottom: "20px" }}>Login</h2>
-        <input 
+        <input
           type="text" placeholder="E-mail" style={styles.input}
           value={email} onChange={(e) => { setEmail(e.target.value); setErroLogin(""); }}
         />
         <div style={styles.passwordWrapper}>
-          <input 
+          <input
             type={showPass ? "text" : "password"} placeholder="Senha" style={styles.input}
             value={password} onChange={(e) => { setPassword(e.target.value); setErroLogin(""); }}
           />
@@ -130,6 +124,7 @@ function Cadastro() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [erroEmail, setErroEmail] = useState("");
+  const navigate = useNavigate();
 
   const temNumero = /[0-9]/.test(password);
   const temMaiuscula = /[A-Z]/.test(password);
@@ -144,15 +139,8 @@ function Cadastro() {
       setErroEmail("Use seu e-mail @alunos.fho.edu.br");
       return;
     }
-    if (!senhaForteTotal || !senhasIguais) return; 
-
+    if (!senhaForteTotal || !senhasIguais) return;
     try {
-      const checkResponse = await fetch(`http://localhost:3001/db_users?email=${email.trim()}`);
-      const usuariosExistentes = await checkResponse.json();
-      if (usuariosExistentes.length > 0) {
-        setErroEmail("Este e-mail já está cadastrado!");
-        return;
-      }
       const response = await fetch("http://localhost:3001/db_users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -160,13 +148,13 @@ function Cadastro() {
       });
       if (response.ok) {
         alert("Cadastro realizado com sucesso!");
-        setEmail(""); setPassword(""); setConfirmPassword("");
+        navigate("/login");
       }
     } catch (e) { setErroEmail("Erro ao conectar com o servidor."); }
   };
 
   return (
-    <div style={styles.body}>
+    <div style={styles.bodyLogin}>
       <img src={logo_fho} alt="Logo FHO" style={styles.logo_fho} />
       <h1 style={styles.mainTitle}>TRUECLASS</h1>
       <div style={styles.container}>
@@ -206,7 +194,6 @@ function Mural() {
   const [menuAberto, setMenuAberto] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState("Classes");
   const navigate = useNavigate();
-
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
 
   useEffect(() => {
@@ -216,109 +203,202 @@ function Mural() {
           fetch("http://localhost:3001/db_salas"),
           fetch("http://localhost:3001/db_professores")
         ]);
-        
-        const dadosSalas = await resSalas.json();
-        const dadosProfs = await resProfs.json();
-        
-        setMaterias(dadosSalas);
-        setProfessores(dadosProfs);
+        setMaterias(await resSalas.json());
+        setProfessores(await resProfs.json());
         setCarregando(false);
-      } catch (err) {
-        console.error("Erro ao buscar dados:", err);
-        setCarregando(false);
-      }
+      } catch (err) { setCarregando(false); }
     };
     buscarDados();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
-
   return (
     <div style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
-      
-      {/* Sidebar (Menu Lateral) */}
       <div style={{ ...styles.sidebar, left: menuAberto ? "0" : "-250px" }}>
         <div style={styles.sidebarHeader}>
-          <div style={styles.logoContainer}>
-             <img src="/true_class.png" alt="Logo" style={{ width: "160px", height: "auto" }} />
-          </div>
+          <div style={styles.logoContainer}><img src="/true_class.png" alt="Logo" style={{ width: "160px" }} /></div>
           <button onClick={() => setMenuAberto(false)} style={styles.closeBtnAbsolute}>✕</button>
         </div>
         <nav style={styles.sidebarNav}>
-          <div onClick={() => { setAbaAtiva("Classes"); setMenuAberto(false); }} 
-               style={{ 
-                 ...styles.navItem, 
-                 backgroundColor: abaAtiva === "Classes" ? "#e8f0fe" : "transparent",
-                 color: abaAtiva === "Classes" ? "#1967d2" : "#5f6368"
-               }}>
+          <div onClick={() => { setAbaAtiva("Classes"); setMenuAberto(false); }}
+               style={{ ...styles.navItem, backgroundColor: abaAtiva === "Classes" ? "#e8f0fe" : "transparent", color: abaAtiva === "Classes" ? "#1967d2" : "#5f6368" }}>
             <FaBook style={{ marginRight: '15px' }} /> Classes
           </div>
           {usuario?.tipo === "aluno" && (
-            <div onClick={() => { setAbaAtiva("Professores"); setMenuAberto(false); }} 
-                 style={{ 
-                   ...styles.navItem, 
-                   backgroundColor: abaAtiva === "Professores" ? "#e8f0fe" : "transparent",
-                   color: abaAtiva === "Professores" ? "#1967d2" : "#5f6368"
-                 }}>
+            <div onClick={() => { setAbaAtiva("Professores"); setMenuAberto(false); }}
+                 style={{ ...styles.navItem, backgroundColor: abaAtiva === "Professores" ? "#e8f0fe" : "transparent", color: abaAtiva === "Professores" ? "#1967d2" : "#5f6368" }}>
               <FaChalkboardTeacher style={{ marginRight: '15px' }} /> Professores
             </div>
           )}
         </nav>
       </div>
 
-      {/* Header */}
-      <header style={styles.muralHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <span onClick={() => setMenuAberto(true)} style={{ fontSize: '24px', cursor: 'pointer', color: '#5f6368', marginLeft: '10px' }}>☰</span>
-        </div>
+      <header style={{ ...styles.muralHeader, position: 'relative', justifyContent: 'center' }}>
+        <span onClick={() => setMenuAberto(true)} style={{ fontSize: '24px', cursor: 'pointer', position: 'absolute', left: '20px', color: '#5f6368' }}>☰</span>
         <h2 style={styles.muralTitle}>TRUE CLASS</h2>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flex: 1 }}>
-          <button onClick={handleLogout} style={styles.logoutButton}><FaSignOutAlt style={{ marginRight: '8px' }} /> Sair</button>
-        </div>
+        <button onClick={() => { localStorage.clear(); navigate("/login"); }} style={styles.logoutButton}>Sair</button>
       </header>
 
-      {/* Conteúdo Dinâmico */}
       <div style={styles.gridContainer}>
-        {carregando ? (
-          <p style={{ textAlign: 'center', width: '100%' }}>Carregando...</p>
-        ) : abaAtiva === "Classes" ? (
-          materias.map((m) => (
-            <div key={m.id} style={styles.muralCard}>
-              <div style={{ ...styles.muralCardHeader, backgroundColor: m.cor }}>
-                <h3 style={{ color: "white", textDecoration: 'underline' }}>{m.nome}</h3>
-                <p style={{ color: "white", fontSize: '13px' }}>{m.professor}</p>
-              </div>
-              <div style={{ height: '140px' }}></div>
-              <div style={styles.muralCardFooter}><span>📁</span></div>
-            </div>
-          ))
-        ) : (
-          professores.map((p) => (
-            <div key={p.id} style={styles.muralCard}>
-              <div style={{ ...styles.muralCardHeader, backgroundColor: p.cor }}>
-                <h3 style={{ color: "white", textDecoration: 'underline' }}>{p.nome}</h3>
-                <p style={{ color: "white", fontSize: '12px', marginTop: '5px' }}>{p.email}</p>
-              </div>
-              <div style={{ height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                 <FaChalkboardTeacher style={{ fontSize: '50px', color: '#eee' }} />
-              </div>
-              <div style={styles.muralCardFooter}>
-                <span title="Enviar e-mail">✉️</span>
-              </div>
-            </div>
-          ))
-        )}
+        {carregando ? <p>Carregando...</p> : abaAtiva === "Classes" ? materias.map(m => (
+          <div key={m.id} style={styles.muralCard} onClick={() => navigate(`/materia/${m.id}`)}>
+            <div style={{ ...styles.muralCardHeader, backgroundColor: m.cor }}><h3 style={{ color: "white" }}>{m.nome}</h3></div>
+            <div style={{ height: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#ccc' }}>Ver Aulas</div>
+          </div>
+        )) : professores.map(p => (
+          <div key={p.id} style={styles.muralCard}>
+            <div style={{ ...styles.muralCardHeader, backgroundColor: p.cor }}><h3 style={{ color: "white" }}>{p.nome}</h3></div>
+            <div style={{ height: '100px', textAlign: 'center', padding: '10px' }}>{p.email}</div>
+          </div>
+        ))}
       </div>
-
       {menuAberto && <div onClick={() => setMenuAberto(false)} style={styles.overlay}></div>}
     </div>
   );
 }
 
-// --- ROTEAMENTO ---
+// --- TELA DE DETALHES
+function MateriaDetalhes() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [materia, setMateria] = useState(null);
+  const [aulas, setAulas] = useState([]);
+  const [aulaSelecionada, setAulaSelecionada] = useState(null);
+  const [duvidas, setDuvidas] = useState([]);
+  const [novaDuvida, setNovaDuvida] = useState("");
+  
+  const [guiaAtiva, setGuiaAtiva] = useState("Comentarios");
+  const [minhaNota, setMinhaNota] = useState(0);
+
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+
+  useEffect(() => {
+    fetch(`http://localhost:3001/db_salas/${id}`).then(res => res.json()).then(setMateria);
+    fetch(`http://localhost:3001/db_aulas?materiaId=${id}`).then(res => res.json()).then(setAulas);
+  }, [id]);
+
+  useEffect(() => {
+    if (aulaSelecionada) {
+      fetch(`http://localhost:3001/db_duvidas?aulaId=${aulaSelecionada.id}`)
+        .then(res => res.json())
+        .then(dados => setDuvidas(dados.sort((a, b) => b.votos - a.votos)));
+
+      fetch(`http://localhost:3001/db_avaliacoes?aulaId=${aulaSelecionada.id}&userId=${usuario.id}`)
+        .then(res => res.json())
+        .then(dados => {
+          if (dados.length > 0) setMinhaNota(dados[0].nota);
+          else setMinhaNota(0);
+        });
+    }
+  }, [aulaSelecionada, usuario.id]);
+
+  const handleSalvarNota = async (nota) => {
+    const res = await fetch(`http://localhost:3001/db_avaliacoes?aulaId=${aulaSelecionada.id}&userId=${usuario.id}`);
+    const existente = await res.json();
+
+    if (existente.length > 0) {
+      await fetch(`http://localhost:3001/db_avaliacoes/${existente[0].id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nota })
+      });
+    } else {
+      await fetch("http://localhost:3001/db_avaliacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aulaId: aulaSelecionada.id, userId: usuario.id, nota })
+      });
+    }
+    setMinhaNota(nota);
+  };
+
+  if (!materia) return <p>Carregando...</p>;
+
+  return (
+    <div style={{ backgroundColor: "#f1f3f4", minHeight: "100vh" }}>
+      <header style={{ ...styles.muralHeader, backgroundColor: materia.cor, position: 'relative', justifyContent: 'center' }}>
+        <button onClick={() => aulaSelecionada ? setAulaSelecionada(null) : navigate("/mural")} style={{ ...styles.backBtn, position: 'absolute', left: '20px' }}>
+          <FaArrowLeft /> Voltar
+        </button>
+        <h2 style={{ ...styles.muralTitle, color: 'white' }}>{materia.nome}</h2>
+      </header>
+
+      <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        {!aulaSelecionada ? (
+          <div style={styles.forumContainer}>
+            <h3>Cronograma de Aulas</h3>
+            {aulas.map(aula => (
+              <div key={aula.id} style={styles.aulaCard} onClick={() => setAulaSelecionada(aula)}>
+                <strong>{aula.titulo}</strong>
+                <p style={{ fontSize: '12px', color: '#666' }}>{aula.data}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={styles.forumContainer}>
+            {}
+            <div style={styles.tabContainer}>
+              <div 
+                onClick={() => setGuiaAtiva("Comentarios")}
+                style={{ ...styles.tabItem, color: guiaAtiva === "Comentarios" ? materia.cor : "#5f6368", borderBottom: guiaAtiva === "Comentarios" ? `3px solid ${materia.cor}` : "none" }}
+              >
+                Comentários
+              </div>
+              <div 
+                onClick={() => setGuiaAtiva("Avaliacao")}
+                style={{ ...styles.tabItem, color: guiaAtiva === "Avaliacao" ? materia.cor : "#5f6368", borderBottom: guiaAtiva === "Avaliacao" ? `3px solid ${materia.cor}` : "none" }}
+              >
+                Avaliação
+              </div>
+            </div>
+
+            {/* CONTEÚDO DA GUIA: COMENTÁRIOS */}
+            {guiaAtiva === "Comentarios" && (
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  <input style={styles.input} placeholder="Dúvida anônima..." value={novaDuvida} onChange={e => setNovaDuvida(e.target.value)} />
+                  <button onClick={() => {/* lógica de postar */}} style={{ ...styles.button, width: '100px', marginTop: 0 }}>Postar</button>
+                </div>
+                {duvidas.map(d => (
+                  <div key={d.id} style={styles.duvidaCard}>
+                    <div style={styles.votosContainer}>
+                       <FaArrowUp onClick={() => handleVoto(d, "up")} style={{ color: d.usuariosVotaram?.find(v => v.userId === usuario.id)?.tipo === "up" ? "#1967d2" : "#ccc" }} />
+                       <span>{d.votos}</span>
+                       <FaArrowDown onClick={() => handleVoto(d, "down")} style={{ color: d.usuariosVotaram?.find(v => v.userId === usuario.id)?.tipo === "down" ? "#d93025" : "#ccc" }} />
+                    </div>
+                    <p>{d.texto}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* CONTEÚDO DA GUIA: AVALIAÇÃO */}
+            {guiaAtiva === "Avaliacao" && (
+              <div style={{ marginTop: '30px', textAlign: 'center' }}>
+                <h4>Como você avalia a aula de hoje?</h4>
+                <div style={{ fontSize: '40px', margin: '20px 0' }}>
+                  {[1, 2, 3, 4, 5].map((estrela) => (
+                    <span 
+                      key={estrela} 
+                      onClick={() => handleSalvarNota(estrela)}
+                      style={{ cursor: 'pointer', color: estrela <= minhaNota ? "#fbbc04" : "#e8eaed", transition: '0.2s' }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p style={{ color: '#70757a' }}>
+                  {minhaNota > 0 ? `Sua nota: ${minhaNota} estrelas` : "Você ainda não avaliou esta aula."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- APP ---
 export default function App() {
   return (
     <Router>
@@ -327,13 +407,15 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/mural" element={<Mural />} />
+        <Route path="/materia/:id" element={<MateriaDetalhes />} />
       </Routes>
     </Router>
   );
 }
 
+// --- ESTILOS ---
 const styles = {
-  body: { 
+  bodyLogin: { 
     margin: 0, 
     padding: 0, 
     fontFamily: "Arial, sans-serif", 
@@ -370,7 +452,8 @@ const styles = {
     fontWeight: "bold", 
     letterSpacing: "2px", 
     marginBottom: "40px", 
-    marginTop: "0" 
+    marginTop: "0", 
+    textAlign: "center" 
   },
   container: { 
     background: "white", 
@@ -379,7 +462,8 @@ const styles = {
     width: "90%", 
     maxWidth: "400px", 
     boxShadow: "0 10px 25px rgba(0, 0, 0, 0.3)", 
-    textAlign: "center" 
+    textAlign: "center", 
+    boxSizing: "border-box" 
   },
   input: { 
     width: "100%", 
@@ -390,12 +474,13 @@ const styles = {
     borderRadius: "5px", 
     outline: "none", 
     fontSize: "14px", 
-    backgroundColor: "#ffffff", 
-    color: "#333333" 
+    backgroundColor: "#fff", 
+    color: "#333" 
   },
   passwordWrapper: { 
     position: "relative", 
-    width: "100%" 
+    width: "100%", 
+    boxSizing: "border-box" 
   },
   eyeButton: { 
     position: "absolute", 
@@ -453,24 +538,20 @@ const styles = {
   },
   muralHeader: { 
     display: "flex", 
-    justifyContent: "space-between", 
     alignItems: "center", 
-    padding: "0 20px", 
     height: "65px", 
     backgroundColor: "white", 
-    borderBottom: "1px solid #ddd" 
+    borderBottom: "1px solid #ddd", 
+    width: '100%' 
   },
   muralTitle: { 
     fontSize: '20px', 
     color: '#5f6368', 
-    fontWeight: '400', 
     margin: 0, 
-    lineHeight: '65px', 
+    fontWeight: '400', 
     textAlign: 'center' 
   },
   logoutButton: { 
-    display: "flex", 
-    alignItems: "center", 
     padding: "8px 16px", 
     backgroundColor: "#dc3545", 
     color: "white", 
@@ -478,7 +559,8 @@ const styles = {
     borderRadius: "5px", 
     cursor: "pointer", 
     fontWeight: "bold", 
-    fontSize: "14px" 
+    position: 'absolute', 
+    right: '20px' 
   },
   gridContainer: { 
     display: "grid", 
@@ -490,19 +572,12 @@ const styles = {
     backgroundColor: "white", 
     borderRadius: "8px", 
     border: "1px solid #dadce0", 
-    overflow: "hidden", 
-    cursor: "pointer" 
+    cursor: "pointer", 
+    overflow: "hidden" 
   },
   muralCardHeader: { 
     padding: "15px", 
-    height: "100px" 
-  },
-  muralCardFooter: { 
-    borderTop: "1px solid #ddd", 
-    padding: "10px", 
-    display: "flex", 
-    justifyContent: "flex-end", 
-    gap: "15px" 
+    height: "80px" 
   },
   sidebar: { 
     position: "fixed", 
@@ -510,27 +585,15 @@ const styles = {
     width: "250px", 
     height: "100%", 
     backgroundColor: "white", 
-    boxShadow: "2px 0 15px rgba(0,0,0,0.1)", 
-    transition: "0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
+    transition: "0.3s", 
     zIndex: 1000, 
-    display: "flex", 
-    flexDirection: "column" 
+    boxShadow: '2px 0 10px rgba(0,0,0,0.1)' 
   },
   sidebarHeader: { 
     padding: "30px 20px", 
-    display: "flex", 
-    justifyContent: "center", 
-    alignItems: "center", 
     borderBottom: "1px solid #eee", 
-    position: "relative", 
-    minHeight: "100px", 
-    boxSizing: "border-box" 
-  },
-  logoContainer: { 
-    display: "flex", 
-    justifyContent: "center", 
-    alignItems: "center", 
-    width: "100%" 
+    textAlign: 'center', 
+    position: 'relative' 
   },
   closeBtnAbsolute: { 
     position: "absolute", 
@@ -538,26 +601,15 @@ const styles = {
     top: "15px", 
     background: "none", 
     border: "none", 
-    fontSize: "22px", 
-    cursor: "pointer", 
-    color: "#5f6368", 
-    zIndex: 10 
-  },
-  sidebarNav: { 
-    display: "flex", 
-    flexDirection: "column", 
-    padding: "15px 0" 
+    fontSize: "20px", 
+    cursor: "pointer" 
   },
   navItem: { 
-    padding: "15px 25px", 
-    borderRadius: "0 25px 25px 0", 
+    padding: "15px", 
     cursor: "pointer", 
-    fontSize: "16px", 
-    marginBottom: "5px", 
-    fontWeight: "500", 
     display: 'flex', 
     alignItems: 'center', 
-    transition: "0.2s" 
+    gap: '10px' 
   },
   overlay: { 
     position: "fixed", 
@@ -567,5 +619,64 @@ const styles = {
     height: "100%", 
     backgroundColor: "rgba(0,0,0,0.4)", 
     zIndex: 999 
+  },
+  aulaCard: { 
+    padding: '15px', 
+    background: 'white', 
+    border: '1px solid #ddd', 
+    borderRadius: '8px', 
+    marginBottom: '10px', 
+    cursor: 'pointer' 
+  },
+  forumContainer: { 
+    background: 'white', 
+    padding: '25px', 
+    borderRadius: '8px', 
+    border: '1px solid #ddd' 
+  },
+  duvidaCard: { 
+    display: 'flex', 
+    gap: '20px', 
+    padding: '15px', 
+    borderBottom: '1px solid #eee' 
+  },
+  votosContainer: { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    gap: '5px', 
+    background: '#f8f9fa', 
+    padding: '10px', 
+    borderRadius: '5px', 
+    minWidth: '40px' 
+  },
+  backBtn: { 
+    background: 'rgba(255,255,255,0.3)', 
+    border: 'none', color: 'white', 
+    padding: '8px 12px', 
+    borderRadius: '5px', 
+    cursor: 'pointer', 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '5px' 
+  },
+  logoContainer: { 
+    width: '100%', 
+    display: 'flex', 
+    justifyContent: 'center' 
+  },
+  tabContainer: {
+    display: "flex",
+    borderBottom: "1px solid #ddd",
+    marginBottom: "10px",
+    gap: "30px"
+  },
+  tabItem: {
+    padding: "10px 5px",
+    cursor: "pointer",
+    fontSize: "15px",
+    fontWeight: "500",
+    transition: "0.3s",
+    marginBottom: "-1px"
   },
 };
