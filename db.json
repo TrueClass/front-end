@@ -1,26 +1,77 @@
 {
   "db_users": [
     {
-      "email": "gu.fusco@alunos.fho.edu.br",
-      "password": "SuaSenhaForte123!",
-      "id": "WAJN5Wy1sHw"
+      "id": "1",
+      "nome": "João Bonin",
+      "email": "joao.bonin@alunos.fho.edu.br",
+      "password": "lun2lun2"
     }
   ],
   "db_salas": [
-    { 
-      "id": 1, 
-      "nome": "Programação WEB", 
-      "professor": "Mauricio Acconcia Dias", 
-      "cor": "#337ab7" 
+    {
+      "id": "1",
+      "nome": "Programação WEB",
+      "professor": "Mauricio Acconcia Dias",
+      "cor": "#337ab7",
+      "codigo": "WEB10",
+      "descricao": "Desenvolvimento de aplicações SPA com React e integração de APIs."
     },
-    { 
-      "id": 2, 
-      "nome": "Microcontroladores", 
-      "professor": "Pedro Luis Antonelli", 
-      "cor": "#5a433f" 
+    {
+      "id": "2",
+      "nome": "Microcontroladores",
+      "professor": "Pedro Luis Antonelli",
+      "cor": "#5a433f",
+      "codigo": "MICRO20",
+      "descricao": "Estudo de sistemas embarcados e arquitetura de processadores."
     }
   ],
-  "db_facul": [
-    { "id": 1, "nome": "FHO - Fundação Hermínio Ometto" }
-  ]
+  "db_inscricoes": [
+    {
+      "id": "101",
+      "userId": "1",
+      "salaId": "1"
+    },
+    {
+      "id": "102",
+      "userId": "1",
+      "salaId": "2"
+    }
+  ],
+  "db_aulas": [
+    {
+      "id": "1",
+      "materiaId": "1",
+      "titulo": "Aula 01 - Introdução",
+      "data": "10/04/2026"
+    },
+    {
+      "id": "2",
+      "materiaId": "1",
+      "titulo": "Aula 02 - Estrutura de Dados",
+      "data": "17/04/2026"
+    },
+    {
+      "id": "3",
+      "materiaId": "2",
+      "titulo": "Aula 01 - Portas Lógicas",
+      "data": "12/04/2026"
+    }
+  ],
+  "db_duvidas": [
+    {
+      "id": "1",
+      "aulaId": "1",
+      "texto": "Não entendi como funciona o useEffect com o array de dependências vazio. Alguém explica?",
+      "votos": 19,
+      "comentarios": [
+        {
+          "id": 101,
+          "texto": "Ele roda apenas uma vez quando o componente abre!"
+        }
+      ],
+      "usuariosVotaram": ["1"]
+    }
+  ],
+  "db_avaliacoes": [],
+  "$schema": "./node_modules/json-server/schema.json"
 }
