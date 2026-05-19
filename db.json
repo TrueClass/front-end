@@ -25,6 +25,7 @@
       "descricao": "Estudo de sistemas embarcados e arquitetura de processadores."
     }
   ],
+  
   "db_inscricoes": [
     {
       "id": "101",
@@ -37,41 +38,41 @@
       "salaId": "2"
     }
   ],
+
   "db_aulas": [
     {
-      "id": "1",
+      "id": "aula-teste-1",
       "materiaId": "1",
-      "titulo": "Aula 01 - Introdução",
-      "data": "10/04/2026"
-    },
-    {
-      "id": "2",
-      "materiaId": "1",
-      "titulo": "Aula 02 - Estrutura de Dados",
-      "data": "17/04/2026"
-    },
-    {
-      "id": "3",
-      "materiaId": "2",
-      "titulo": "Aula 01 - Portas Lógicas",
-      "data": "12/04/2026"
+      "titulo": "Introdução e Conceitos Iniciais",
+      "data": "18/05/2026"
     }
   ],
+  
+  "db_avaliacoes": [
+    {
+      "id": "av-1",
+      "aulaId": "aula-teste-1",
+      "userId": "aluno-anonimo-1",
+      "nota": 5
+    },
+    {
+      "id": "av-2",
+      "aulaId": "aula-teste-1",
+      "userId": "aluno-anonimo-2",
+      "nota": 4
+    }
+  ],
+
+  
   "db_duvidas": [
     {
-      "id": "1",
-      "aulaId": "1",
-      "texto": "Não entendi como funciona o useEffect com o array de dependências vazio. Alguém explica?",
-      "votos": 19,
-      "comentarios": [
-        {
-          "id": 101,
-          "texto": "Ele roda apenas uma vez quando o componente abre!"
-        }
-      ],
-      "usuariosVotaram": ["1"]
+      "id": "duvida-1",
+      "aulaId": "aula-teste-1",
+      "texto": "Professor, o senhor poderia revisar o conceito de complexidade de tempo na próxima aula?",
+      "votos": 3,
+      "usuariosVotaram": []
     }
-  ],
-  "db_avaliacoes": [],
+  ]
+,
   "$schema": "./node_modules/json-server/schema.json"
 }
