@@ -154,7 +154,7 @@ export default function CriarMateria() {
   const [sucesso, setSucesso] = useState("");
 
   const navigate = useNavigate();
-  const { user: usuario } = useUser();
+  const { user: usuario, refreshClasses } = useUser();
 
   const today = new Date().toISOString().split("T")[0];
   const dateError = validateDates(dataInicio, dataFim);
@@ -190,6 +190,7 @@ export default function CriarMateria() {
       });
 
       if (res.status === 201) {
+        refreshClasses();
         setSucesso("Turma criada! Redirecionando...");
         setTimeout(() => navigate("/mural"), 2000);
       } else {

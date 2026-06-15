@@ -15,7 +15,7 @@ export default function Mural() {
   const [erroJoin, setErroJoin] = useState("");
 
   const navigate = useNavigate();
-  const { user: usuario } = useUser();
+  const { user: usuario, refreshClasses, classesVersion } = useUser();
   const menuRef = useRef(null);
 
   const isProfessor = usuario?.role === "professor" || usuario?.role === "coordinator";
@@ -37,7 +37,7 @@ export default function Mural() {
       }
     };
     carregar();
-  }, [usuario?.institutionId]);
+  }, [usuario?.institutionId, classesVersion]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -58,9 +58,7 @@ export default function Mural() {
       if (res.ok) {
         setShowJoinModal(false);
         setCodigo("");
-        const refreshRes = await apiFetch(`${API_BASE}/institution/${usuario.institutionId}/classes`);
-        const refreshData = await refreshRes.json();
-        setLista(refreshData.classes || []);
+        refreshClasses();
       } else if (res.status === 409) {
         setErroJoin("Você já está nessa turma.");
       } else if (res.status === 404) {

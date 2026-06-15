@@ -156,7 +156,7 @@ export default function AulaDetalhes() {
                   <h4>Como você avalia esta aula?</h4>
                   <div style={{ fontSize: "35px", margin: "10px 0" }}>
                     {[1, 2, 3, 4, 5].map(estrela => (
-                      <span key={estrela} onClick={() => setMinhaNota(estrela)} style={{ cursor: "pointer", color: estrela <= minhaNota ? "#fbbc04" : "#e8eaed" }}>★</span>
+                      <span key={estrela} onClick={() => setMinhaNota(estrela)} style={{ cursor: "pointer", color: estrela <= minhaNota ? "#fbbc04" : "#c9c2a8" }}>★</span>
                     ))}
                   </div>
                   <textarea

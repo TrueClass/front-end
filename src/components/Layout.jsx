@@ -9,7 +9,7 @@ import { styles } from "../styles";
 export default function Layout({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user: usuario, logout } = useUser();
+  const { user: usuario, logout, classesVersion } = useUser();
 
   const [lista, setLista] = useState([]);
   const [showClasses, setShowClasses] = useState(false);
@@ -24,7 +24,7 @@ export default function Layout({ children }) {
       .then(r => r.json())
       .then(data => setLista(data.classes || []))
       .catch(() => {});
-  }, [usuario?.institutionId]);
+  }, [usuario?.institutionId, classesVersion]);
 
   useEffect(() => {
     if (!isCoordenador || !usuario?.institutionId) return;
