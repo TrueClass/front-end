@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { styles } from "../styles";
 import { API_BASE } from "../constants";
 import { apiFetch } from "../apiFetch";
+import { useUser } from "../UserContext";
 
 const HEADER_COLOR = "#42576F";
 
@@ -11,6 +12,9 @@ export default function AulaDetalhes() {
   const { id, aulaDate } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
+
+  const { user: usuario } = useUser();
+  const isProfessorOrCoordinator = usuario?.role === "professor" || usuario?.role === "coordinator";
 
   const item = state?.item;
   const subject = state?.subject || "Turma";
@@ -147,7 +151,7 @@ export default function AulaDetalhes() {
                   <p style={{ margin: 0, fontWeight: "600", color: "#5f6368" }}>Esta aula ainda não ocorreu</p>
                   <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#aaa" }}>O feedback estará disponível após a realização da aula</p>
                 </div>
-              ) : !minhaAvaliacao && (
+              ) : !isProfessorOrCoordinator && !minhaAvaliacao && (
                 <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", border: "1px solid #dadce0", marginBottom: "20px", textAlign: "center" }}>
                   <h4>Como você avalia esta aula?</h4>
                   <div style={{ fontSize: "35px", margin: "10px 0" }}>
