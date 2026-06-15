@@ -71,14 +71,12 @@ export default function ProfessorDetalhesCoordenador() {
     const fetchAll = async () => {
       setCarregando(true);
       try {
-        const [classesRes, feedbacksRes] = await Promise.all([
-          apiFetch(`${API_BASE}/institution/${institutionId}/professor/${professorId}/classes`),
-          apiFetch(`${API_BASE}/institution/${institutionId}/professor/${professorId}/feedbacks?limit=5`),
+        const [classesResult, feedbacksResult] = await Promise.allSettled([
+          apiFetch(`${API_BASE}/institution/${institutionId}/professor/${professorId}/classes`).then(r => r.json()),
+          apiFetch(`${API_BASE}/institution/${institutionId}/professor/${professorId}/feedbacks?limit=5`).then(r => r.json()),
         ]);
-        const classesData = await classesRes.json();
-        const feedbacksData = await feedbacksRes.json();
-        setClasses(classesData.classes || []);
-        setFeedbacks(feedbacksData);
+        if (classesResult.status === "fulfilled") setClasses(classesResult.value.classes || []);
+        if (feedbacksResult.status === "fulfilled") setFeedbacks(feedbacksResult.value);
       } catch (err) {
         console.error("Erro ao carregar dados do professor:", err);
       } finally {
