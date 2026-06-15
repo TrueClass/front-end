@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaThLarge, FaBook, FaChevronDown, FaChevronRight } from "react-icons/fa";
+import { FaThLarge, FaBook, FaChevronDown, FaChevronRight, FaChalkboardTeacher } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../UserContext";
 import { apiFetch } from "../apiFetch";
@@ -13,6 +13,10 @@ export default function Layout({ children }) {
 
   const [lista, setLista] = useState([]);
   const [showClasses, setShowClasses] = useState(false);
+  const [professores, setProfessores] = useState([]);
+  const [showProfessores, setShowProfessores] = useState(false);
+
+  const isCoordenador = usuario?.role === "coordinator";
 
   useEffect(() => {
     if (!usuario?.institutionId) return;
@@ -21,6 +25,14 @@ export default function Layout({ children }) {
       .then(data => setLista(data.classes || []))
       .catch(() => {});
   }, [usuario?.institutionId]);
+
+  useEffect(() => {
+    if (!isCoordenador || !usuario?.institutionId) return;
+    apiFetch(`${API_BASE}/institution/${usuario.institutionId}/professor_by_coordinator`)
+      .then(r => r.json())
+      .then(data => setProfessores(data.professors || []))
+      .catch(() => {});
+  }, [isCoordenador, usuario?.institutionId]);
 
   const navItem = (path, label, icon) => {
     const isActive = pathname === path;
@@ -91,6 +103,42 @@ export default function Layout({ children }) {
                 ))
               )}
             </div>
+          )}
+
+          {isCoordenador && (
+            <>
+              <div
+                onClick={() => setShowProfessores(p => !p)}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
+                style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", cursor: "pointer", borderRadius: "0 24px 24px 0", marginRight: "12px", fontSize: "14px", color: "#444", transition: "background-color 0.15s", userSelect: "none" }}
+              >
+                <span style={{ fontSize: "15px" }}><FaChalkboardTeacher /></span>
+                <span style={{ flex: 1 }}>Professores</span>
+                <span style={{ fontSize: "11px", color: "#aaa" }}>{showProfessores ? <FaChevronDown /> : <FaChevronRight />}</span>
+              </div>
+
+              {showProfessores && (
+                <div style={{ paddingBottom: "4px" }}>
+                  {professores.length === 0 ? (
+                    <p style={{ fontSize: "12px", color: "#aaa", padding: "4px 18px 4px 44px", margin: 0 }}>Nenhum professor</p>
+                  ) : (
+                    professores.map(prof => (
+                      <div
+                        key={prof.id}
+                        onClick={() => navigate(`/coordenador/professor/${prof.id}`, { state: { professor: prof } })}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
+                        style={{ padding: "7px 18px 7px 44px", cursor: "pointer", fontSize: "13px", color: "#555", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "background-color 0.15s" }}
+                        title={prof.name}
+                      >
+                        {prof.name}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
           )}
         </aside>
 
