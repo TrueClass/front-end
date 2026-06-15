@@ -18,7 +18,7 @@ export default function Mural() {
   const { user: usuario } = useUser();
   const menuRef = useRef(null);
 
-  const isProfessor = usuario?.role === "professor";
+  const isProfessor = usuario?.role === "professor" || usuario?.role === "coordinator";
   const today = new Date().toISOString().split("T")[0];
   const shortDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
