@@ -45,7 +45,10 @@ export default function MateriaDetalhes() {
     <div style={{ backgroundColor: "#f1f3f4", flex: 1, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "8px 20px", maxWidth: "860px", margin: "0 auto", width: "100%" }}>
         <div style={styles.forumContainer}>
-          <h2 style={{ color: HEADER_COLOR, fontSize: "24px", fontWeight: "700", margin: "0 0 4px" }}>{subject}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+            <h2 style={{ color: HEADER_COLOR, fontSize: "24px", fontWeight: "700", margin: 0 }}>{subject}</h2>
+            <span style={{ fontSize: "12px", color: "#888", backgroundColor: "#f1f3f4", border: "1px solid #dadce0", borderRadius: "6px", padding: "2px 8px", fontWeight: "500" }}>ID: {id}</span>
+          </div>
           <div style={{ marginBottom: "16px", lineHeight: "1.4" }}>
             {professorName && <div style={{ fontSize: "13px", color: "#5f6368" }}>Prof. {professorName}</div>}
             {className && <div style={{ fontSize: "12px", color: "#aaa" }}>{className}</div>}
