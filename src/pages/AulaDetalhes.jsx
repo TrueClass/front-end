@@ -1,54 +1,91 @@
-import React, { useState, useEffect } from "react";
-import { FaArrowUp, FaArrowLeft, FaCommentAlt, FaStar } from "react-icons/fa";
+import React, { useState, useEffect, useCallback } from "react";
+import { FaArrowLeft, FaCommentAlt, FaStar } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { styles } from "../styles";
-import { API_BASE } from "../constants";
-import { apiFetch } from "../apiFetch";
-import { useUser } from "../UserContext";
+import { useUser } from "../context/UserContext";
+import { getClassItems } from "../api/classes";
+import { getRatings, postRating, setBoost } from "../api/feedback";
+import { clickable, cx, todayLocal } from "../utils";
+import RatingTable, { RatingRow } from "../components/RatingTable";
+import Skeleton from "../components/Skeleton";
 
-const HEADER_COLOR = "#42576F";
+const PAGE_SIZE = 10;
+
+const ERROS_AVALIACAO = {
+  403: "Você não está matriculado nesta turma.",
+  409: "Você já avaliou esta aula.",
+  422: "Esta aula ainda não está disponível para avaliação.",
+};
 
 export default function AulaDetalhes() {
-  const { id, aulaDate } = useParams();
+  const { id, aulaId } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
 
   const { user: usuario } = useUser();
-  const isProfessorOrCoordinator = usuario?.role === "professor" || usuario?.role === "coordinator";
+  const isStudent = usuario?.role === "student";
 
-  const item = state?.item;
-  const subject = state?.subject || "Turma";
-  const professorName = state?.professorName;
-  const className = state?.className;
+  const [item, setItem] = useState(state?.item ?? null);
+  const [erroAula, setErroAula] = useState("");
 
   const [guiaAtiva, setGuiaAtiva] = useState("Avaliacao");
-  const [duvidas] = useState([]);
   const [minhaNota, setMinhaNota] = useState(0);
   const [meuComentario, setMeuComentario] = useState("");
+  const [minhaAvaliacao, setMinhaAvaliacao] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [carregandoMais, setCarregandoMais] = useState(false);
   const [erroAvaliacao, setErroAvaliacao] = useState("");
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
 
-  const feedbackId = item?.id ?? aulaDate;
+  useEffect(() => {
+    if (item || !usuario?.institutionId) return;
+    getClassItems(usuario.institutionId, id)
+      .then(data => {
+        const found = (data.dates || []).find(d => String(d.id) === aulaId);
+        if (found) setItem(found);
+        else setErroAula("Aula não encontrada.");
+      })
+      .catch(err => setErroAula(err.status === 403 ? "Você não tem acesso a esta turma." : "Erro ao carregar a aula."));
+  }, [item, id, aulaId, usuario?.institutionId]);
+
+  const carregarAvaliacoes = useCallback(async (pageToLoad) => {
+    const data = await getRatings(aulaId, pageToLoad, PAGE_SIZE);
+    setTotal(data.total);
+    setMinhaAvaliacao(data.user_rating);
+    setAvaliacoes(prev => {
+      if (pageToLoad === 1) return data.ratings;
+      const vistos = new Set(prev.map(av => av.id));
+      return [...prev, ...data.ratings.filter(av => !vistos.has(av.id))];
+    });
+    setPage(pageToLoad);
+  }, [aulaId]);
 
   useEffect(() => {
-    apiFetch(`${API_BASE}/feedback/${feedbackId}`)
-      .then(r => r.json())
-      .then(data => setAvaliacoes(data.ratings || []))
-      .catch(() => {});
-  }, [feedbackId]);
+    carregarAvaliacoes(1).catch(err => console.error("Erro ao carregar avaliações:", err));
+  }, [carregarAvaliacoes]);
 
-  const handleBoost = async (avId) => {
-    const current = avaliacoes.find(av => av.id === avId);
-    const method = current?.boosted_by_user ? "DELETE" : "POST";
-    const res = await apiFetch(`${API_BASE}/feedback/${avId}/boost`, { method });
-    if (res.ok) {
-      const data = await res.json();
-      setAvaliacoes(prev => prev.map(av => av.id === avId
-        ? { ...av, boosts: data.boosts, boosted_by_user: !current?.boosted_by_user }
-        : av
-      ));
+  const carregarMais = async () => {
+    setCarregandoMais(true);
+    try {
+      await carregarAvaliacoes(page + 1);
+    } catch (err) {
+      console.error("Erro ao carregar avaliações:", err);
+    } finally {
+      setCarregandoMais(false);
     }
+  };
+
+  const handleBoost = async (av) => {
+    let boosts;
+    try {
+      ({ boosts } = await setBoost(av.id, !av.boosted_by_user));
+    } catch {
+      return;
+    }
+    const atualizar = (x) => x.id === av.id ? { ...x, boosts, boosted_by_user: !av.boosted_by_user } : x;
+    setAvaliacoes(prev => prev.map(atualizar));
+    setMinhaAvaliacao(prev => prev && atualizar(prev));
   };
 
   const handlePostarAvaliacao = async () => {
@@ -57,136 +94,115 @@ export default function AulaDetalhes() {
     setErroAvaliacao("");
     setEnviandoAvaliacao(true);
     try {
-      const res = await apiFetch(`${API_BASE}/feedback/${feedbackId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: minhaNota, content: meuComentario.trim() }),
-      });
-      if (res.status === 201) {
-        const nova = await res.json();
-        setAvaliacoes(prev => [{ id: nova.id, value: minhaNota, content: meuComentario.trim(), sent_by_user: 1, boosts: 0, boosted_by_user: false }, ...prev]);
-      } else if (res.status === 409) {
-        const refetch = await apiFetch(`${API_BASE}/feedback/${feedbackId}`);
-        const data = await refetch.json();
-        setAvaliacoes(data.ratings || []);
-      } else {
-        setErroAvaliacao("Erro ao enviar avaliação.");
-      }
-    } catch {
-      setErroAvaliacao("Erro de conexão.");
+      const nova = await postRating(aulaId, minhaNota, meuComentario.trim());
+      setMinhaAvaliacao({ id: nova.id, value: minhaNota, content: meuComentario.trim(), sent_by_user: true, boosts: 0, boosted_by_user: false });
+      setTotal(t => t + 1);
+    } catch (err) {
+      if (err.status === 409) await carregarAvaliacoes(1).catch(() => {});
+      else setErroAvaliacao(ERROS_AVALIACAO[err.status] || (err.status ? "Erro ao enviar avaliação." : "Erro de conexão."));
     } finally {
       setEnviandoAvaliacao(false);
     }
   };
 
-  const ratingRow = (av, highlight) => (
-    <tr key={av.id} style={{ borderBottom: "1px solid #f0f0f0", backgroundColor: highlight ? "#fffde7" : "transparent" }}>
-      <td style={{ padding: "10px 12px", textAlign: "center", verticalAlign: "middle", borderRight: "1px solid #dadce0" }}>
-        <div style={{ color: "#fbbc04", fontWeight: "700", fontSize: "16px", lineHeight: "1" }}>{av.value}</div>
-        <div style={{ color: "#fbbc04", fontSize: "12px", letterSpacing: "1px", lineHeight: "1", marginTop: "3px" }}>
-          {"★".repeat(av.value)}{"☆".repeat(5 - av.value)}
-        </div>
-      </td>
-      <td style={{ padding: "10px 12px", color: "#333", verticalAlign: "middle" }}>
-        {highlight && <span style={{ fontSize: "11px", fontWeight: "700", color: "#f9a825", display: "block", marginBottom: "3px" }}>Seu comentário</span>}
-        {av.content}
-      </td>
-      <td style={{ padding: "10px 12px", textAlign: "center", verticalAlign: "middle", borderLeft: "1px solid #dadce0" }}>
-        <button
-          onClick={() => handleBoost(av.id)}
-          style={{ background: "none", border: "none", cursor: "pointer", color: av.boosted_by_user ? "#1967d2" : "#ccc", display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", margin: "0 auto" }}
-        >
-          <FaArrowUp style={{ fontSize: "14px" }} />
-          <span style={{ fontSize: "11px", fontWeight: "600" }}>{av.boosts ?? 0}</span>
-        </button>
-      </td>
-    </tr>
+  const isFuture = item ? item.created_at > todayLocal() : false;
+  const temMais = avaliacoes.length < total - (minhaAvaliacao ? 1 : 0);
+
+  const onBoost = isStudent ? handleBoost : undefined;
+
+  const tab = (key, label, icon) => (
+    <div
+      {...clickable(() => setGuiaAtiva(key))}
+      role="tab"
+      aria-selected={guiaAtiva === key}
+      className={cx("tab", guiaAtiva === key && "tab--active")}
+    >
+      {icon} {label}
+    </div>
   );
 
-  const today = new Date().toISOString().split("T")[0];
-  const isFuture = aulaDate > today;
-
-  const minhaAvaliacao = avaliacoes.find(av => av.sent_by_user === 1);
-  const outrasAvaliacoes = avaliacoes.filter(av => av.sent_by_user !== 1);
+  const emptyState = (Icon, title, hint) => (
+    <div className="empty-state">
+      <Icon className="empty-state__icon" />
+      <p className="empty-state__title">{title}</p>
+      <p className="empty-state__hint">{hint}</p>
+    </div>
+  );
 
   return (
-    <div style={{ backgroundColor: "#f1f3f4", flex: 1, display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "8px 20px", maxWidth: "860px", margin: "0 auto", width: "100%" }}>
-        <div style={styles.forumContainer}>
+    <div className="page">
+      <div className="page__content">
+        <div className="panel">
           <button
-            onClick={() => navigate(`/materia/${id}`, { state: { subject, professorName, className } })}
-            style={{ background: "none", border: "none", cursor: "pointer", color: HEADER_COLOR, display: "flex", alignItems: "center", gap: "8px", fontSize: "16px", fontWeight: "600", padding: "0 0 6px", marginBottom: "0" }}
+            onClick={() => navigate(`/materia/${id}`, { state: { subject: state?.subject, professorName: state?.professorName, className: state?.className } })}
+            className="back-link"
           >
-            <FaArrowLeft style={{ fontSize: "20px" }} /> Voltar para aulas
+            <FaArrowLeft /> Voltar para aulas
           </button>
 
-          <div style={styles.tabContainer}>
-            <div
-              onClick={() => setGuiaAtiva("Avaliacao")}
-              style={{ ...styles.tabItem, color: guiaAtiva === "Avaliacao" ? HEADER_COLOR : "#5f6368", borderBottom: guiaAtiva === "Avaliacao" ? `3px solid ${HEADER_COLOR}` : "3px solid transparent", fontWeight: "600" }}
-            >
-              <FaStar style={{ marginRight: "8px" }} /> Avaliações de Aula ({avaliacoes.length})
-            </div>
-            <div
-              onClick={() => setGuiaAtiva("Comentarios")}
-              style={{ ...styles.tabItem, color: guiaAtiva === "Comentarios" ? HEADER_COLOR : "#5f6368", borderBottom: guiaAtiva === "Comentarios" ? `3px solid ${HEADER_COLOR}` : "3px solid transparent", fontWeight: "600" }}
-            >
-              <FaCommentAlt style={{ marginRight: "8px" }} /> Dúvidas ({duvidas.length})
-            </div>
+          {item?.title && <h3 className="lesson-heading">{item.title}</h3>}
+
+          <div className="tabs" role="tablist">
+            {tab("Avaliacao", `Avaliações (${total})`, <FaStar />)}
+            {tab("Comentarios", "Dúvidas", <FaCommentAlt />)}
           </div>
 
-          {guiaAtiva === "Comentarios" && (
-            <div style={{ marginTop: "40px", textAlign: "center", padding: "20px" }}>
-              <FaCommentAlt style={{ fontSize: "32px", color: "#dadce0", marginBottom: "12px" }} />
-              <p style={{ margin: 0, fontWeight: "600", color: "#5f6368" }}>Volte novamente mais tarde</p>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#aaa" }}>Ainda estamos trabalhando nisso</p>
-            </div>
-          )}
+          {guiaAtiva === "Comentarios" && emptyState(FaCommentAlt, "Volte novamente mais tarde", "Ainda estamos trabalhando nisso")}
 
           {guiaAtiva === "Avaliacao" && (
-            <div style={{ marginTop: "20px" }}>
-              {isFuture ? (
-                <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                  <FaStar style={{ fontSize: "36px", color: "#dadce0", marginBottom: "12px" }} />
-                  <p style={{ margin: 0, fontWeight: "600", color: "#5f6368" }}>Esta aula ainda não ocorreu</p>
-                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#aaa" }}>O feedback estará disponível após a realização da aula</p>
-                </div>
-              ) : !isProfessorOrCoordinator && !minhaAvaliacao && (
-                <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", border: "1px solid #dadce0", marginBottom: "20px", textAlign: "center" }}>
-                  <h4>Como você avalia esta aula?</h4>
-                  <div style={{ fontSize: "35px", margin: "10px 0" }}>
-                    {[1, 2, 3, 4, 5].map(estrela => (
-                      <span key={estrela} onClick={() => setMinhaNota(estrela)} style={{ cursor: "pointer", color: estrela <= minhaNota ? "#fbbc04" : "#c9c2a8" }}>★</span>
-                    ))}
-                  </div>
-                  <textarea
-                    style={{ ...styles.input, height: "80px", resize: "none", fontFamily: "inherit" }}
-                    placeholder="Deixe seu feedback/comentário sobre a aula (Obrigatório)..."
-                    value={meuComentario}
-                    onChange={e => setMeuComentario(e.target.value)}
-                  />
-                  {erroAvaliacao && <p style={{ ...styles.erroTexto, marginTop: "8px" }}>{erroAvaliacao}</p>}
-                  <button onClick={handlePostarAvaliacao} disabled={enviandoAvaliacao} style={{ ...styles.button, marginTop: "10px", opacity: enviandoAvaliacao ? 0.6 : 1 }}>
-                    {enviandoAvaliacao ? "Enviando..." : "Postar Avaliação"}
-                  </button>
-                </div>
-              )}
-              {!isFuture && avaliacoes.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#666" }}>Nenhuma avaliação enviada ainda.</p>
-              ) : !isFuture && (
-                <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px", fontSize: "14px" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #dadce0" }}>
-                      <th style={{ padding: "8px 12px", textAlign: "center", color: "#5f6368", fontWeight: "600", width: "100px", borderRight: "1px solid #dadce0" }}>Nota</th>
-                      <th style={{ padding: "8px 12px", textAlign: "left", color: "#5f6368", fontWeight: "600" }}>Conteúdo</th>
-                      <th style={{ padding: "8px 12px", textAlign: "center", color: "#5f6368", fontWeight: "600", width: "80px", borderLeft: "1px solid #dadce0" }}>Boosts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {minhaAvaliacao && ratingRow(minhaAvaliacao, true)}
-                    {outrasAvaliacoes.map(av => ratingRow(av, false))}
-                  </tbody>
-                </table>
+            <div className="tab-panel">
+              {erroAula ? (
+                <p className="state-message state-message--error">{erroAula}</p>
+              ) : !item ? (
+                <Skeleton variant="line" count={3} />
+              ) : isFuture ? (
+                emptyState(FaStar, "Esta aula ainda não ocorreu", "O feedback estará disponível após a realização da aula")
+              ) : (
+                <>
+                  {isStudent && !minhaAvaliacao && (
+                    <div className="rating-form">
+                      <h4>Como você avalia esta aula?</h4>
+                      <div className="star-picker" role="radiogroup" aria-label="Nota da aula">
+                        {[1, 2, 3, 4, 5].map(estrela => (
+                          <span
+                            key={estrela}
+                            {...clickable(() => setMinhaNota(estrela))}
+                            role="radio"
+                            aria-checked={estrela === minhaNota}
+                            aria-label={`${estrela} estrela${estrela > 1 ? "s" : ""}`}
+                            className={cx("star-picker__star", estrela <= minhaNota && "star-picker__star--on")}
+                          >★</span>
+                        ))}
+                      </div>
+                      <textarea
+                        className="input input--textarea"
+                        placeholder="Deixe seu feedback/comentário sobre a aula (Obrigatório)..."
+                        value={meuComentario}
+                        maxLength={280}
+                        onChange={e => setMeuComentario(e.target.value)}
+                      />
+                      {erroAvaliacao && <p className="text-error">{erroAvaliacao}</p>}
+                      <button onClick={handlePostarAvaliacao} disabled={enviandoAvaliacao} className="btn">
+                        {enviandoAvaliacao ? "Enviando..." : "Enviar avaliação"}
+                      </button>
+                    </div>
+                  )}
+                  {total === 0 ? (
+                    <p className="state-message">Nenhuma avaliação enviada ainda.</p>
+                  ) : (
+                    <>
+                      <RatingTable>
+                        {minhaAvaliacao && <RatingRow rating={minhaAvaliacao} mine onBoost={onBoost} />}
+                        {avaliacoes.map(av => <RatingRow key={av.id} rating={av} onBoost={onBoost} />)}
+                      </RatingTable>
+                      {temMais && (
+                        <button onClick={carregarMais} disabled={carregandoMais} className="btn btn--secondary load-more">
+                          {carregandoMais ? "Carregando..." : "Carregar mais avaliações"}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
           )}

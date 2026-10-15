@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaEye, FaEyeSlash, FaUniversity } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import { styles } from "../styles";
-import { API_BASE } from "../constants";
-import { useUser } from "../UserContext";
+import { useUser } from "../context/UserContext";
+import { login as loginRequest, getMe } from "../api/auth";
+import { listInstitutions } from "../api/institutions";
+import Select from "../components/Select";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -18,11 +19,8 @@ export default function Login() {
   const { login } = useUser();
 
   useEffect(() => {
-    fetch(`${API_BASE}/institution`)
-      .then((res) => res.json())
-      .then((dados) => {
-        if (dados && dados.institutions) setFaculdades(dados.institutions);
-      })
+    listInstitutions()
+      .then(setFaculdades)
       .catch((err) => console.error("Erro ao buscar instituições:", err));
   }, []);
 
@@ -36,63 +34,48 @@ export default function Login() {
       return setErroLogin("E-mail não permitido para esta instituição.");
 
     try {
-      const response = await fetch(`${API_BASE}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: email.trim(), password }),
+      await loginRequest(email.trim(), password);
+      const me = await getMe();
+      login({
+        ...me,
+        institutionId: me.institution_id,
+        faculdadeNome: me.institution_name,
       });
-
-      if (response.ok) {
-        const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
-        const me = await meRes.json();
-        login({
-          ...me,
-          institutionId: instObj?.id,
-          faculdadeNome: faculdadeSelecionada,
-        });
-        navigate("/mural");
-      } else {
-        setErroLogin("E-mail ou senha incorretos");
-      }
-    } catch (error) {
-      setErroLogin("Servidor indisponível.");
+      navigate("/mural");
+    } catch (err) {
+      if (err.status === 401) setErroLogin("E-mail ou senha incorretos");
+      else if (err.status) setErroLogin("Não foi possível entrar. Tente novamente.");
+      else setErroLogin("Servidor indisponível.");
     }
   };
 
   return (
-    <div style={styles.bodyLogin}>
-      <div style={styles.container}>
-        <img src="/true_class.png" alt="Logo TrueClass" style={styles.logoInternal} />
+    <div className="auth-page">
+      <div className="auth-card">
+        <img src="/true_class.png" alt="Logo TrueClass" className="auth-card__logo" />
 
-        <div style={{ position: "relative", width: "100%", marginBottom: "10px" }}>
-          <select
-            style={{ ...styles.input, appearance: "none", paddingRight: "35px" }}
-            value={faculdadeSelecionada}
-            onChange={(e) => setFaculdadeSelecionada(e.target.value)}
-          >
-            <option value="">Selecione sua instituição...</option>
-            {faculdades.map((f) => (
-              <option key={f.id} value={f.name}>{f.name}</option>
-            ))}
-          </select>
-          <FaUniversity style={styles.iconSelect} />
-        </div>
+        <Select
+          value={faculdadeSelecionada}
+          onChange={setFaculdadeSelecionada}
+          options={faculdades.map(f => ({ value: f.name, label: f.name }))}
+          placeholder="Selecione sua instituição"
+          icon={<FaUniversity />}
+        />
 
-        <input type="text" placeholder="E-mail" style={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && senhaRef.current?.focus()} />
+        <input type="email" placeholder="E-mail" className="input" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && senhaRef.current?.focus()} />
 
-        <div style={styles.passwordWrapper}>
-          <input ref={senhaRef} type={showPass ? "text" : "password"} placeholder="Senha" style={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleEntrar()} />
-          <button type="button" onClick={() => setShowPass(!showPass)} style={styles.eyeButton}>
+        <div className="password-wrapper">
+          <input ref={senhaRef} type={showPass ? "text" : "password"} placeholder="Senha" className="input" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleEntrar()} />
+          <button type="button" onClick={() => setShowPass(!showPass)} className="password-toggle" aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}>
             {showPass ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
 
-        {erroLogin && <p style={styles.erroTexto}>{erroLogin}</p>}
-        <button onClick={handleEntrar} style={styles.button}>Acessar Portal</button>
+        {erroLogin && <p className="text-error">{erroLogin}</p>}
+        <button onClick={handleEntrar} className="btn">Entrar</button>
 
-        <p style={styles.footerText}>
-          Não tem uma conta? <Link to="/cadastro" style={styles.signupLink}>Cadastre-se</Link>
+        <p className="auth-card__footer">
+          Não tem uma conta? <Link to="/cadastro" className="link">Cadastre-se</Link>
         </p>
       </div>
     </div>

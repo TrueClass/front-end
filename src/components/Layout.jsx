@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { FaThLarge, FaBook, FaChevronDown, FaChevronRight, FaChalkboardTeacher } from "react-icons/fa";
+import { FaThLarge, FaBook, FaChevronDown, FaChevronRight, FaChalkboardTeacher, FaStar, FaBars } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useUser } from "../UserContext";
-import { apiFetch } from "../apiFetch";
-import { API_BASE } from "../constants";
-import { styles } from "../styles";
+import { useUser } from "../context/UserContext";
+import { getClasses } from "../api/classes";
+import { getCoordinatedProfessors } from "../api/professors";
+import { logout as logoutRequest } from "../api/auth";
+import { clickable, cx } from "../utils";
+
+function NavGroup({ icon, label, open, onToggle, emptyText, children }) {
+  const items = React.Children.toArray(children);
+  return (
+    <>
+      <div {...clickable(onToggle)} aria-expanded={open} className="nav-item">
+        <span className="nav-item__icon">{icon}</span>
+        <span className="nav-item__label">{label}</span>
+        <span className="nav-item__chevron">{open ? <FaChevronDown /> : <FaChevronRight />}</span>
+      </div>
+      {open && (
+        <div className="nav-group">
+          {items.length === 0 ? <p className="nav-empty">{emptyText}</p> : items}
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function Layout({ children }) {
   const navigate = useNavigate();
@@ -15,134 +34,105 @@ export default function Layout({ children }) {
   const [showClasses, setShowClasses] = useState(false);
   const [professores, setProfessores] = useState([]);
   const [showProfessores, setShowProfessores] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
 
-  const isCoordenador = usuario?.role === "coordinator";
+  const isProfessor = usuario?.role === "professor";
+  const isCoordenador = isProfessor && !!usuario?.is_coordinator;
 
   useEffect(() => {
     if (!usuario?.institutionId) return;
-    apiFetch(`${API_BASE}/institution/${usuario.institutionId}/classes`)
-      .then(r => r.json())
-      .then(data => setLista(data.classes || []))
-      .catch(() => {});
+    getClasses(usuario.institutionId).then(setLista).catch(() => setLista([]));
   }, [usuario?.institutionId, classesVersion]);
 
   useEffect(() => {
     if (!isCoordenador || !usuario?.institutionId) return;
-    apiFetch(`${API_BASE}/institution/${usuario.institutionId}/professor_by_coordinator`)
-      .then(r => r.json())
-      .then(data => setProfessores(data.professors || []))
-      .catch(() => {});
+    getCoordinatedProfessors(usuario.institutionId).then(setProfessores).catch(() => setProfessores([]));
   }, [isCoordenador, usuario?.institutionId]);
 
-  const navItem = (path, label, icon) => {
-    const isActive = pathname === path;
-    return (
-      <div
-        key={path}
-        onClick={() => navigate(path)}
-        onMouseEnter={e => !isActive && (e.currentTarget.style.backgroundColor = "#f1f3f4")}
-        onMouseLeave={e => !isActive && (e.currentTarget.style.backgroundColor = "transparent")}
-        style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", cursor: "pointer", borderRadius: "0 24px 24px 0", marginRight: "12px", backgroundColor: isActive ? "#e8f0fe" : "transparent", color: isActive ? "#1967d2" : "#444", fontWeight: isActive ? "600" : "400", fontSize: "14px", transition: "background-color 0.15s" }}
-      >
-        <span style={{ fontSize: "15px" }}>{icon}</span>
-        {label}
-      </div>
-    );
+  useEffect(() => {
+    if (!menuAberto) return;
+    const onKeyDown = (e) => e.key === "Escape" && setMenuAberto(false);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [menuAberto]);
+
+  const irPara = (path, options) => {
+    setMenuAberto(false);
+    navigate(path, options);
+  };
+
+  const navItem = (path, label, icon) => (
+    <div
+      key={path}
+      {...clickable(() => irPara(path))}
+      className={cx("nav-item", pathname === path && "nav-item--active")}
+      aria-current={pathname === path ? "page" : undefined}
+    >
+      <span className="nav-item__icon">{icon}</span>
+      {label}
+    </div>
+  );
+
+  const handleLogout = async () => {
+    await logoutRequest().catch(() => {});
+    logout();
+    navigate("/login");
   };
 
   return (
-    <div style={{ backgroundColor: "#f8f9fa", height: "100vh", display: "flex", flexDirection: "column" }}>
-      <header style={styles.muralHeader}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", position: "absolute", left: "20px" }}>
-          <img src="/true_class.png" alt="Logo TrueClass" style={{ height: "38px", width: "auto" }} />
-          <span style={{ color: "#5f6368", fontSize: "17px", fontWeight: "600" }}>— {usuario?.faculdadeNome}</span>
-        </div>
+    <div className="app-shell">
+      <header className="app-header">
         <button
-          onClick={async () => {
-            await fetch(`${API_BASE}/authenticate`, { method: "DELETE", credentials: "include" }).catch(() => {});
-            logout();
-            navigate("/login");
-          }}
-          style={styles.logoutButton}
+          onClick={() => setMenuAberto(a => !a)}
+          className="menu-toggle"
+          aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menuAberto}
         >
-          Sair
+          <FaBars />
         </button>
+        <div className="app-header__brand">
+          <img src="/true_class.png" alt="Logo TrueClass" className="app-header__logo" />
+          <span className="app-header__institution">— {usuario?.faculdadeNome}</span>
+        </div>
+        <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <aside style={{ width: "260px", flexShrink: 0, backgroundColor: "white", borderRight: "1px solid #dadce0", padding: "12px 0", overflowY: "auto" }}>
+      <div className="app-body">
+        {menuAberto && <div className="sidebar-backdrop" onClick={() => setMenuAberto(false)} />}
+        <aside className={cx("sidebar", menuAberto && "sidebar--open")}>
           {navItem("/mural", "Mural", <FaThLarge />)}
+          {isProfessor && navItem("/professor/nota-geral", "Meu desempenho", <FaStar />)}
 
-          <div
-            onClick={() => setShowClasses(p => !p)}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
-            style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", cursor: "pointer", borderRadius: "0 24px 24px 0", marginRight: "12px", fontSize: "14px", color: "#444", transition: "background-color 0.15s", userSelect: "none" }}
-          >
-            <span style={{ fontSize: "15px" }}><FaBook /></span>
-            <span style={{ flex: 1 }}>Minhas Turmas</span>
-            <span style={{ fontSize: "11px", color: "#aaa" }}>{showClasses ? <FaChevronDown /> : <FaChevronRight />}</span>
-          </div>
-
-          {showClasses && (
-            <div style={{ paddingBottom: "4px" }}>
-              {lista.length === 0 ? (
-                <p style={{ fontSize: "12px", color: "#aaa", padding: "4px 18px 4px 44px", margin: 0 }}>Nenhuma turma</p>
-              ) : (
-                lista.map(cls => (
-                  <div
-                    key={cls.id}
-                    onClick={() => navigate(`/materia/${cls.id}`, { state: { subject: cls.subject, professorName: cls.professor_name, className: cls["class"] } })}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
-                    style={{ padding: "7px 18px 7px 44px", cursor: "pointer", fontSize: "13px", color: "#555", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "background-color 0.15s" }}
-                    title={cls.subject}
-                  >
-                    {cls.subject}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          <NavGroup icon={<FaBook />} label="Minhas turmas" open={showClasses} onToggle={() => setShowClasses(p => !p)} emptyText="Nenhuma turma">
+            {lista.map(cls => (
+              <div
+                key={cls.id}
+                {...clickable(() => irPara(`/materia/${cls.id}`, { state: { subject: cls.subject, professorName: cls.professor_name, className: cls["class"] } }))}
+                className="nav-subitem"
+                title={cls.subject}
+              >
+                {cls.subject}
+              </div>
+            ))}
+          </NavGroup>
 
           {isCoordenador && (
-            <>
-              <div
-                onClick={() => setShowProfessores(p => !p)}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
-                style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 18px", cursor: "pointer", borderRadius: "0 24px 24px 0", marginRight: "12px", fontSize: "14px", color: "#444", transition: "background-color 0.15s", userSelect: "none" }}
-              >
-                <span style={{ fontSize: "15px" }}><FaChalkboardTeacher /></span>
-                <span style={{ flex: 1 }}>Professores</span>
-                <span style={{ fontSize: "11px", color: "#aaa" }}>{showProfessores ? <FaChevronDown /> : <FaChevronRight />}</span>
-              </div>
-
-              {showProfessores && (
-                <div style={{ paddingBottom: "4px" }}>
-                  {professores.length === 0 ? (
-                    <p style={{ fontSize: "12px", color: "#aaa", padding: "4px 18px 4px 44px", margin: 0 }}>Nenhum professor</p>
-                  ) : (
-                    professores.map(prof => (
-                      <div
-                        key={prof.id}
-                        onClick={() => navigate(`/coordenador/professor/${prof.id}`, { state: { professor: prof } })}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f1f3f4"}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
-                        style={{ padding: "7px 18px 7px 44px", cursor: "pointer", fontSize: "13px", color: "#555", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "background-color 0.15s" }}
-                        title={prof.name}
-                      >
-                        {prof.name}
-                      </div>
-                    ))
-                  )}
+            <NavGroup icon={<FaChalkboardTeacher />} label="Professores" open={showProfessores} onToggle={() => setShowProfessores(p => !p)} emptyText="Nenhum professor">
+              {professores.map(prof => (
+                <div
+                  key={prof.id}
+                  {...clickable(() => irPara(`/coordenador/professor/${prof.id}`))}
+                  className="nav-subitem"
+                  title={prof.name}
+                >
+                  {prof.name}
                 </div>
-              )}
-            </>
+              ))}
+            </NavGroup>
           )}
         </aside>
 
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        <main className="app-main">
           {children}
         </main>
       </div>
