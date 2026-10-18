@@ -11,6 +11,7 @@ import Skeleton from "../components/Skeleton";
 const PAGE_SIZE = 10;
 
 const ERROS_AVALIACAO = {
+  400: "Seu comentário contém termos não permitidos. Revise o texto e tente novamente.",
   403: "Você não está matriculado nesta turma.",
   409: "Você já avaliou esta aula.",
   422: "Esta aula ainda não está disponível para avaliação.",
