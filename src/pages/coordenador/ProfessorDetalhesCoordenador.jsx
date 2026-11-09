@@ -4,6 +4,7 @@ import { useUser } from "../../context/UserContext";
 import { getProfessorClasses, getProfessorFeedbacks } from "../../api/professors";
 import RatingTable, { RatingRow } from "../../components/RatingTable";
 import Skeleton from "../../components/Skeleton";
+import ProfessorThemes from "../../components/ProfessorThemes";
 
 const shortDate = (d) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
@@ -103,6 +104,8 @@ export default function ProfessorDetalhesCoordenador() {
                 ))
               )}
             </div>
+
+            <ProfessorThemes key={professorId} institutionId={institutionId} professorId={professorId} />
 
             <div className="panel">
               <h3 className="section-title">Feedbacks dos alunos</h3>

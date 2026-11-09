@@ -1771,3 +1771,138 @@
   padding: 10px 16px;
   font-size: 14px;
 }
+
+.professor-themes {
+  .text-error {
+    margin-top: 8px;
+  }
+}
+
+.professor-themes__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-brand);
+}
+
+.themes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.theme + .theme {
+  border-top: 1px solid var(--color-divider);
+}
+
+.theme__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-hover);
+  }
+}
+
+.theme__header--plain {
+  padding: 0;
+
+  &:hover {
+    background: none;
+  }
+
+  .feedback-section__title {
+    margin: 0;
+  }
+}
+
+.theme__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.theme__bar {
+  flex: 0 0 120px;
+  height: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-danger) 25%, transparent);
+  border-radius: 4px;
+}
+
+.theme__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-success);
+}
+
+.theme__stats {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.theme-evidences {
+  margin: 0;
+  padding: 0 16px 12px;
+  list-style: none;
+}
+
+.theme-evidence {
+  padding: 8px 0;
+
+  & + & {
+    border-top: 1px solid var(--color-divider);
+  }
+}
+
+.theme-evidence__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-body);
+}
+
+.theme-evidence__mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  color: var(--color-text);
+}
+
+.theme-evidence__mark--positivo {
+  background: var(--color-success-bg);
+}
+
+.theme-evidence__mark--negativo {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
+.theme-evidence__mark--neutro {
+  background: var(--color-hover);
+}
+
+.theme-evidence__meta {
+  font-size: 12px;
+  color: var(--color-text-soft);
+}
+
+@media (max-width: 600px) {
+  .theme__header {
+    flex-wrap: wrap;
+  }
+
+  .theme__bar {
+    flex-basis: 100%;
+    order: 3;
+  }
+}
