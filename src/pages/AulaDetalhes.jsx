@@ -7,6 +7,7 @@ import { getRatings, postRating, setBoost } from "../api/feedback";
 import { clickable, cx, todayLocal } from "../utils";
 import RatingTable, { RatingRow } from "../components/RatingTable";
 import Skeleton from "../components/Skeleton";
+import RatingSummary from "../components/RatingSummary";
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +25,7 @@ export default function AulaDetalhes() {
 
   const { user: usuario } = useUser();
   const isStudent = usuario?.role === "student";
+  const isProfessor = usuario?.role === "professor";
 
   const [item, setItem] = useState(state?.item ?? null);
   const [erroAula, setErroAula] = useState("");
@@ -192,6 +194,7 @@ export default function AulaDetalhes() {
                     <p className="state-message">Nenhuma avaliação enviada ainda.</p>
                   ) : (
                     <>
+                      {isProfessor && <RatingSummary key={aulaId} classItemId={aulaId} totalRatings={total} />}
                       <RatingTable>
                         {minhaAvaliacao && <RatingRow rating={minhaAvaliacao} mine onBoost={onBoost} />}
                         {avaliacoes.map(av => <RatingRow key={av.id} rating={av} onBoost={onBoost} />)}

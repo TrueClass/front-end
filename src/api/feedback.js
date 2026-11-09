@@ -8,3 +8,9 @@ export const postRating = (classItemId, value, content) =>
 
 export const setBoost = (ratingId, boosted) =>
   request(`/feedback/${ratingId}/boost`, boosted ? { method: "POST", body: {} } : { method: "DELETE" });
+
+export const getRatingsSummary = (classItemId) =>
+  request(`/feedback/${classItemId}/summary`);
+
+export const generateRatingsSummary = (classItemId) =>
+  request(`/feedback/${classItemId}/summary`, { method: "POST", body: {} });
